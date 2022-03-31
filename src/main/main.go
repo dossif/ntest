@@ -16,7 +16,6 @@ func main() {
 		log.Fatalf("failed to create new pinger: %v", err)
 	}
 	defer pinger.Close()
-
 	tt, err := pinger.PingAttempts(dest, time.Second*5, 1)
 	if err != nil {
 		log.Fatalf("filed to ping %v: %v", dest, err)
