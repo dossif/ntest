@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	goping "github.com/digineo/go-ping"
+	tui "github.com/gizak/termui/v3"
+	"github.com/gizak/termui/v3/widgets"
 	"log"
 	"net"
 	"time"
@@ -21,4 +23,21 @@ func main() {
 		log.Fatalf("filed to ping %v: %v", dest, err)
 	}
 	fmt.Println(tt.String())
+
+	err = tui.Init()
+	if err != nil {
+		log.Fatalf("failed to create ui interface: %v", err)
+	}
+	defer tui.Close()
+	p := widgets.NewParagraph()
+	p.Text = "Hello World!"
+	p.SetRect(0, 0, 25, 5)
+
+	tui.Render(p)
+
+	for e := range tui.PollEvents() {
+		if e.Type == tui.KeyboardEvent {
+			break
+		}
+	}
 }
