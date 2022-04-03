@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net"
 	"pping/src/pinger"
@@ -19,8 +18,8 @@ func main() {
 	
 	for {
 		select {
-		case msg := <-journal:
-			fmt.Println(msg)
+		case <-journal:
+			//fmt.Println(msg)
 		}
 	}
 }
