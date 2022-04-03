@@ -2,42 +2,25 @@ package main
 
 import (
 	"fmt"
-	goping "github.com/digineo/go-ping"
-	tui "github.com/gizak/termui/v3"
-	"github.com/gizak/termui/v3/widgets"
 	"log"
 	"net"
-	"time"
+	"pping/src/pinger"
+	"pping/src/tui"
 )
 
 func main() {
-	bind := net.ParseIP("0.0.0.0")
-	dest, _ := net.ResolveIPAddr("ip4", "1.1.1.1")
-	pinger, err := goping.New(bind.String(), "")
+	journal := make(chan string)
+	ping, err := pinger.NewPinger(net.ParseIP("0.0.0.0"), &log.Logger{})
 	if err != nil {
-		log.Fatalf("failed to create new pinger: %v", err)
+		log.Fatalf("failed to create pinger: %v", err)
 	}
-	defer pinger.Close()
-	tt, err := pinger.PingAttempts(dest, time.Second*5, 1)
-	if err != nil {
-		log.Fatalf("filed to ping %v: %v", dest, err)
-	}
-	fmt.Println(tt.String())
-
-	err = tui.Init()
-	if err != nil {
-		log.Fatalf("failed to create ui interface: %v", err)
-	}
-	defer tui.Close()
-	p := widgets.NewParagraph()
-	p.Text = "Hello World!"
-	p.SetRect(0, 0, 25, 5)
-
-	tui.Render(p)
-
-	for e := range tui.PollEvents() {
-		if e.Type == tui.KeyboardEvent {
-			break
+	go func() { _ = ping.Ping("1.1.1.1", journal) }()
+	go func() { tui.StartTui() }()
+	
+	for {
+		select {
+		case msg := <-journal:
+			fmt.Println(msg)
 		}
 	}
 }
