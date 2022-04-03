@@ -20,8 +20,8 @@ func StartTui() {
 	p.Title = "Text Box"
 	p.Text = "PRESS q TO QUIT DEMO"
 	p.SetRect(0, 0, 50, 5)
-	p.TextStyle.Fg = tui.ColorWhite
-	p.BorderStyle.Fg = tui.ColorCyan
+	p.TextStyle.Fg = tui.Theme.Default.Fg
+	p.BorderStyle.Fg = tui.Theme.Default.Fg
 	
 	updateParagraph := func(count int) {
 		if count%2 == 0 {
