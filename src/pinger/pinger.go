@@ -1,9 +1,12 @@
 package pinger
 
 import (
+	"context"
+	"fmt"
 	goping "github.com/digineo/go-ping"
 	"log"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -31,23 +34,26 @@ func NewPinger(bind net.IP, logger *log.Logger) (Pinger, error) {
 	}, nil
 }
 
-func (p *Pinger) Ping(dest string, journal chan Ping) error {
+func (p *Pinger) Ping(ctx context.Context, wg *sync.WaitGroup, dest string, journal chan Ping) {
+	defer wg.Done()
 	destIp, _ := net.ResolveIPAddr("ip4", dest)
-	for true {
-		var ping Ping
-		tt, err := p.Api.PingAttempts(destIp, time.Second*5, 1)
-		if err != nil {
-			ping.Status = false
-			ping.Time = time.Second * 0
-			ping.Message = err.Error()
-		} else {
-			ping.Status = true
-			ping.Time = tt
-			ping.Message = "ok"
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println(fmt.Sprintf("pinger: %v", ctx.Err()))
+			return
+		default:
+			var ping Ping
+			tt, err := p.Api.PingAttempts(destIp, time.Second*5, 1)
+			if err != nil {
+				ping.Status = false
+				ping.Time = time.Second * 0
+				ping.Message = err.Error()
+			} else {
+				ping.Status = true
+				ping.Time = tt
+				ping.Message = "ok"
+			}
 		}
-
-		journal <- ping
-		time.Sleep(time.Second * 1)
 	}
-	return nil
 }
