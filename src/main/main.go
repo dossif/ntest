@@ -36,24 +36,27 @@ func main() {
 	mainCtx = contextWithSignal(mainCtx)
 	mainCtx, mainCancel := context.WithTimeout(mainCtx, time.Second*999)
 	defer mainCancel()
-	// create child context
-	childCtx := context.WithValue(mainCtx, "name", "func1")
-	childCtx, childCancel := context.WithTimeout(childCtx, time.Second*999)
-	defer childCancel()
-	// exec long function with context and waitgroup
-	journal := make(chan pinger.Ping)
-	ping, err := pinger.NewPinger(net.ParseIP("0.0.0.0"), &log.Logger{})
+	// pinger
+	pngCtx := context.WithValue(mainCtx, "name", "func1")
+	pngCtx, pngCancel := context.WithTimeout(mainCtx, time.Second*999)
+	defer pngCancel()
+	journal := make(chan pinger.Ping, 100)
+	ping, err := pinger.NewPinger(pngCtx, &wg, net.ParseIP("0.0.0.0"), &log.Logger{})
 	if err != nil {
 		log.Fatalf("failed to create pinger: %v", err)
 	}
+	go func() { ping.Ping("1.1.1.1", journal) }()
+	wg.Add(1)
+	// ui
+	uiCtx := context.WithValue(mainCtx, "name", "func1")
+	uiCtx, uiCancel := context.WithTimeout(mainCtx, time.Second*999)
+	defer uiCancel()
+	nui, err := ui.NewUi(uiCtx, &wg, "ui_cli")
 	if err != nil {
-		log.Fatalf("failed to create tui: %v", err)
+		log.Fatalf("failed to create ui: %v", err)
 	}
+	go func() { err = nui.RenderUi(journal) }()
 	wg.Add(1)
-	go func() { ping.Ping(childCtx, &wg, "1.1.1.1", journal) }()
-	wg.Add(1)
-	nui, err := ui.NewUi(childCtx, &wg, "ui_cli")
-	err = nui.RenderUi()
 	// wait until cancel main context
 	<-mainCtx.Done()
 	fmt.Println("wait all wg done")

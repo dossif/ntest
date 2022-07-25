@@ -3,12 +3,13 @@ package ui
 import (
 	"context"
 	"fmt"
+	"pping/src/pinger"
 	"pping/src/ui_cli"
 	"sync"
 )
 
 type Ui interface {
-	RenderUi() error
+	RenderUi(journal chan pinger.Ping) error
 }
 
 func NewUi(ctx context.Context, wg *sync.WaitGroup, name string) (Ui, error) {
