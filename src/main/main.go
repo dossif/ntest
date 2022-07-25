@@ -40,7 +40,7 @@ func main() {
 	pngCtx := context.WithValue(mainCtx, "name", "func1")
 	pngCtx, pngCancel := context.WithTimeout(mainCtx, time.Second*999)
 	defer pngCancel()
-	journal := make(chan pinger.Ping, 100)
+	journal := make(chan pinger.Ping)
 	ping, err := pinger.NewPinger(pngCtx, &wg, net.ParseIP("0.0.0.0"), &log.Logger{})
 	if err != nil {
 		log.Fatalf("failed to create pinger: %v", err)
