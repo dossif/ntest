@@ -13,10 +13,12 @@ import (
 // github.com/digineo/go-ping
 
 type Ping struct {
-	Number  int
-	Status  bool
-	Time    time.Duration
-	Message string
+	Host     string
+	Ip       string
+	Sequence int
+	Status   bool
+	Rtt      time.Duration
+	Error    error
 }
 
 type Pinger struct {
@@ -43,7 +45,7 @@ func (p *Pinger) Ping(dest string, journal chan Ping) {
 	defer p.Wg.Done()
 	defer fmt.Println("exit from pinger")
 	destIp, _ := net.ResolveIPAddr("ip4", dest)
-	var num int
+	var seq int
 	for {
 		select {
 		case <-p.Ctx.Done():
@@ -51,23 +53,22 @@ func (p *Pinger) Ping(dest string, journal chan Ping) {
 			close(journal)
 			return
 		default:
+			rtt, err := p.Api.PingAttempts(destIp, time.Second*5, 1)
 			var ping Ping
-			tt, err := p.Api.PingAttempts(destIp, time.Second*5, 1)
+			ping.Host = dest
+			ping.Ip = destIp.String()
+			ping.Sequence = seq
+			ping.Rtt = rtt
+			ping.Error = err
 			if err != nil {
-				ping.Number = num
 				ping.Status = false
-				ping.Time = time.Second * 0
-				ping.Message = err.Error()
 			} else {
-				ping.Number = num
 				ping.Status = true
-				ping.Time = tt
-				ping.Message = "ok"
 			}
 			select {
 			case journal <- ping:
 			}
-			num = num + 1
+			seq = seq + 1
 			time.Sleep(time.Second * 1)
 		}
 	}

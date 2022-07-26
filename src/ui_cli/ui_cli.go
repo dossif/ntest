@@ -3,6 +3,7 @@ package ui_cli
 import (
 	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"pping/src/pinger"
 	"sync"
 	"time"
@@ -28,8 +29,17 @@ func (ui *Ui) RenderUi(journal chan pinger.Ping) error {
 		case <-ui.Ctx.Done():
 			return nil
 		default:
-			msg := <-journal
-			fmt.Println(fmt.Sprintf("print line: %v", msg))
+			ping := <-journal
+			lg := log.Fields{
+				"seq":  ping.Sequence,
+				"dest": fmt.Sprintf("%v (%v)", ping.Host, ping.Ip),
+				"rtt":  ping.Rtt,
+			}
+			if ping.Status == true {
+				log.WithFields(lg).Info("ping is successful")
+			} else {
+				log.WithFields(lg).Warn(ping.Error.Error())
+			}
 			time.Sleep(time.Second * 1)
 		}
 	}
