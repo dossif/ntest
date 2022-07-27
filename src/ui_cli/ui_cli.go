@@ -30,6 +30,9 @@ func (ui *Ui) RenderUi(journal chan pinger.Ping) error {
 			return nil
 		default:
 			ping := <-journal
+			cf := new(log.TextFormatter)
+			cf.FullTimestamp = true
+			log.SetFormatter(cf)
 			lg := log.Fields{
 				"seq":  ping.Sequence,
 				"dest": fmt.Sprintf("%v (%v)", ping.Host, ping.Ip),

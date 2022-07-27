@@ -29,6 +29,7 @@ func contextWithSignal(ctx context.Context) context.Context {
 }
 
 func main() {
+	dest := os.Args[1]
 	// create waitgroup
 	wg := sync.WaitGroup{}
 	// creat main context
@@ -45,7 +46,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create pinger: %v", err)
 	}
-	go func() { ping.Ping("1.1.1.1", journal) }()
+	go func() { ping.Ping(dest, journal) }()
 	wg.Add(1)
 	// ui
 	uiCtx := context.WithValue(mainCtx, "name", "func1")

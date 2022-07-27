@@ -1,6 +1,8 @@
 #!/bin/bash -ex
 
 go build -o pping ./src/main
-sudo chown root:staff ./pping
-sudo chmod u+s ./pping
-./pping $@
+cp -f ./pping /usr/local/bin
+sudo chown root:staff /usr/local/bin/pping
+sudo chmod u+s /usr/local/bin/pping
+/usr/local/bin/pping $@
+
