@@ -1,8 +1,7 @@
 #!/bin/bash -ex
 
-go build -o pping ./src/main
-cp -f ./pping /usr/local/bin
-sudo chown root:staff /usr/local/bin/pping
-sudo chmod u+s /usr/local/bin/pping
-/usr/local/bin/pping $@
-
+APP="ntest"
+go build -o $APP ./src/main
+cp -f ./$APP /usr/local/bin
+sudo chown root:staff /usr/local/bin/$APP
+sudo chmod u+s /usr/local/bin/$APP

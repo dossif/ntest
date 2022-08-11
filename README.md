@@ -1,1 +1,3 @@
-# pping
+# ntest
+
+Network testing tool
