@@ -44,7 +44,10 @@ func NewPinger(ctx context.Context, wg *sync.WaitGroup, bind net.IP, logger *log
 func (p *Pinger) Ping(dest string, journal chan Ping) {
 	defer p.Wg.Done()
 	defer fmt.Println("exit from pinger")
-	destIp, _ := net.ResolveIPAddr("ip4", dest)
+	destIp, err := net.ResolveIPAddr("ip4", dest)
+	if err != nil {
+		p.Log.Fatalf("failed to resole ip from dns %v: %v", "sss", err)
+	}
 	var seq int
 	for {
 		select {
