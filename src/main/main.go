@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	args2 "pping/src/args"
+	"pping/src/args"
+	"pping/src/icmpping"
 	"pping/src/signal"
 )
 
@@ -15,17 +16,28 @@ var (
 	appVersion = "0.0.0"
 )
 
-func main() {
-	args := args2.NewArgs(appName, appVersion)
-	_ = signal.ContextWithSignal(context.Background())
+type Test interface {
+	Execute(ctx context.Context, arguments args.Arguments) error
+}
+
+func NewTest(arg args.Arguments) Test {
 	switch true {
-	case args.IcmpPing.Command.Happened():
-		fmt.Println("ICMP PING")
-	case args.TcpTest.Command.Happened():
-		fmt.Println("TCP PING")
-	default:
-		panic("unknown command")
+	case arg.IcmpPing.Command.Happened():
+		return icmpping.NewTest()
+	case arg.TcpTest.Command.Happened():
 	}
+	return nil
+}
+
+func main() {
+	arg := args.NewArgs(appName, appVersion)
+	ctx := signal.ContextWithSignal(context.Background())
+	t := NewTest(arg)
+	err := t.Execute(ctx, arg)
+	if err != nil {
+		panic(fmt.Sprintf("failed to init test: %v", err))
+	}
+	defer fmt.Println("exit main")
 
 	//dest := os.Args[1]
 	//// create waitgroup
