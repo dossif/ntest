@@ -19,6 +19,7 @@ type IcmpPing struct {
 		Host    *string
 		Timeout *int
 		Dns     *string
+		Bind    *string
 	}
 }
 
@@ -60,12 +61,19 @@ func NewArgs(appName string, appVersion string) Arguments {
 		Help:     "dns server",
 		Validate: func(args []string) error { return validateArg(args[0], "string", "hostname|ip4_addr|ip6_addr") },
 	}
+	bindFlagOpt := &argparse.Options{
+		Required: false,
+		Help:     "bind address",
+		Default:  "0.0.0.0",
+		Validate: func(args []string) error { return validateArg(args[0], "string", "hostname|ip4_addr|ip6_addr") },
+	}
 	// icmp ping
 	parser.DisableHelp()
 	args.IcmpPing.Command = parser.NewCommand("ping", "host icmp ping")
 	args.IcmpPing.Flags.Host = args.IcmpPing.Command.String("h", "host", hostFlagOpt)
 	args.IcmpPing.Flags.Timeout = args.IcmpPing.Command.Int("t", "timeout", timeoutFlagOpt)
 	args.IcmpPing.Flags.Dns = args.IcmpPing.Command.String("d", "dns", dnsFlagOpt)
+	args.IcmpPing.Flags.Bind = args.IcmpPing.Command.String("b", "bind", bindFlagOpt)
 	// tcp test
 	args.TcpTest.Command = parser.NewCommand("tcp", "host tcp-port test")
 	args.TcpTest.Flags.Host = args.TcpTest.Command.String("h", "host", hostFlagOpt)
