@@ -1,4 +1,4 @@
-module pping
+module ntest
 
 go 1.17
 

@@ -1,4 +1,4 @@
-package icmpping
+package icmp
 
 import (
 	"context"
@@ -6,34 +6,20 @@ import (
 	"github.com/digineo/go-ping"
 	log "github.com/sirupsen/logrus"
 	"net"
-	"pping/src/dns"
+	"ntest/src/dns"
 	"time"
 )
 
 type Test struct {
-	Api     ping.Pinger
-	Host    string
-	Ip      net.IPAddr
-	Timeout time.Duration
+	Api      ping.Pinger
+	Host     string
+	Ip       net.IPAddr
+	Timeout  time.Duration
+	Interval time.Duration
+	Warn     time.Duration
 }
 
-//type Ping struct {
-//	Host     string
-//	Ip       string
-//	Sequence int
-//	Status   bool
-//	Rtt      time.Duration
-//	Error    error
-//}
-//
-//type Pinger struct {
-//	Api *goping.Pinger
-//	Log *log.Logger
-//	Ctx context.Context
-//	Wg  *sync.WaitGroup
-//}
-
-func NewTest(bind string, host string, timeout int) *Test {
+func NewTest(bind string, host string, timeout int, interval int, warn int) *Test {
 	bindIp, err := dns.ResolveAddr(bind)
 	if err != nil {
 		log.Fatalf("failed to resolve bind %v", err)
@@ -47,20 +33,24 @@ func NewTest(bind string, host string, timeout int) *Test {
 		log.Fatalf("failed to create new pinger: %v", err)
 	}
 	return &Test{
-		Api:     *api,
-		Host:    host,
-		Ip:      *hostIp,
-		Timeout: time.Duration(timeout) * time.Millisecond,
+		Api:      *api,
+		Host:     host,
+		Ip:       *hostIp,
+		Timeout:  time.Duration(timeout) * time.Millisecond,
+		Interval: time.Duration(interval) * time.Millisecond,
+		Warn:     time.Duration(warn) * time.Millisecond,
 	}
 }
 
 func (t *Test) Execute(ctx context.Context) error {
+	ticker := time.NewTicker(t.Interval)
+	defer ticker.Stop()
 	var seq int
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
+		case <-ticker.C:
 			rtt, err := t.Api.Ping(&t.Ip, t.Timeout)
 			seq = seq + 1
 			cf := new(log.TextFormatter)
@@ -69,14 +59,15 @@ func (t *Test) Execute(ctx context.Context) error {
 			lg := log.Fields{
 				"seq":  seq,
 				"dest": fmt.Sprintf("%v (%v)", t.Host, t.Ip.IP),
-				"rtt":  rtt,
+				"rtt":  rtt.Round(time.Millisecond),
 			}
 			if err != nil {
 				log.WithFields(lg).Errorf("ping error: %v", err)
+			} else if rtt > t.Warn {
+				log.WithFields(lg).Warnf("warn threshold %v exceed", t.Warn)
 			} else {
 				log.WithFields(lg).Infof("ping ok")
 			}
-			time.Sleep(time.Second * 1)
 		}
 	}
 }

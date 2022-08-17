@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"pping/src/args"
-	"pping/src/icmpping"
-	"pping/src/signal"
+	"ntest/src/args"
+	"ntest/src/icmp"
+	"ntest/src/signal"
+	"ntest/src/tcp"
 )
 
 const (
@@ -24,8 +25,10 @@ func NewTest(arg args.Arguments) Test {
 	switch true {
 	case arg.IcmpPing.Command.Happened():
 		f := arg.IcmpPing.Flags
-		return icmpping.NewTest(*f.Bind, *f.Host, *f.Timeout)
+		return icmp.NewTest(*f.Bind, *f.Host, *f.Timeout, *f.Interval, *f.Warn)
 	case arg.TcpTest.Command.Happened():
+		f := arg.TcpTest.Flags
+		return tcp.NewTest(*f.Bind, *f.Host, *f.Port, *f.Timeout, *f.Interval)
 	}
 	return nil
 }
