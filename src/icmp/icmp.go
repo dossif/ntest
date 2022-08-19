@@ -22,15 +22,15 @@ type Test struct {
 func NewTest(bind string, host string, timeout int, interval int, warn int) *Test {
 	bindIp, err := dns.ResolveAddr(bind)
 	if err != nil {
-		log.Fatalf("failed to resolve bind %v", err)
+		log.Fatalf("failed to resolve bind: %v", err)
 	}
 	hostIp, err := dns.ResolveAddr(host)
 	if err != nil {
-		log.Fatalf("failed to resolve host %v", err)
+		log.Fatalf("failed to resolve host: %v", err)
 	}
 	api, err := ping.New(bindIp.String(), "")
 	if err != nil {
-		log.Fatalf("failed to create new pinger: %v", err)
+		log.Fatalf("failed to create new icmp pinger: %v", err)
 	}
 	return &Test{
 		Api:      *api,
@@ -51,7 +51,6 @@ func (t *Test) Execute(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			rtt, err := t.Api.Ping(&t.Ip, t.Timeout)
 			seq = seq + 1
 			cf := new(log.TextFormatter)
 			cf.FullTimestamp = true
@@ -59,14 +58,15 @@ func (t *Test) Execute(ctx context.Context) error {
 			lg := log.Fields{
 				"seq":  seq,
 				"dest": fmt.Sprintf("%v (%v)", t.Host, t.Ip.IP),
-				"rtt":  rtt.Round(time.Millisecond),
 			}
+			pCtx, _ := context.WithTimeout(ctx, t.Timeout)
+			rtt, err := t.Api.PingContext(pCtx, &t.Ip)
 			if err != nil {
-				log.WithFields(lg).Errorf("ping error: %v", err)
+				log.WithFields(lg).Errorf("icmp error: %v", err)
 			} else if rtt > t.Warn {
-				log.WithFields(lg).Warnf("warn threshold %v exceed", t.Warn)
+				log.WithFields(lg).Warnf("rtt warn threshold %v exceed", t.Warn)
 			} else {
-				log.WithFields(lg).Infof("ping ok")
+				log.WithFields(lg).Infof("icmp rtt %v", rtt)
 			}
 		}
 	}

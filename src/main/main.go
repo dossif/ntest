@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"ntest/src/args"
+	"ntest/src/http"
 	"ntest/src/icmp"
 	"ntest/src/signal"
 	"ntest/src/tcp"
@@ -29,6 +30,9 @@ func NewTest(arg args.Arguments) Test {
 	case arg.TcpTest.Command.Happened():
 		f := arg.TcpTest.Flags
 		return tcp.NewTest(*f.Bind, *f.Host, *f.Port, *f.Timeout, *f.Interval)
+	case arg.HttpTest.Command.Happened():
+		f := arg.HttpTest.Flags
+		return http.NewTest(*f.Bind, *f.Host, *f.Timeout, *f.Interval, *f.Method, *f.Domain, *f.Body)
 	}
 	return nil
 }
