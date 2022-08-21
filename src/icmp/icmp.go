@@ -17,14 +17,15 @@ type Test struct {
 	Timeout  time.Duration
 	Interval time.Duration
 	Warn     time.Duration
+	Ns       string
 }
 
-func NewTest(bind string, host string, timeout int, interval int, warn int) *Test {
-	bindIp, err := dns.ResolveAddr(bind)
+func NewTest(bind string, host string, timeout int, interval int, warn int, ns string) *Test {
+	bindIp, err := dns.ResolveAddr(bind, "")
 	if err != nil {
 		log.Fatalf("failed to resolve bind: %v", err)
 	}
-	hostIp, err := dns.ResolveAddr(host)
+	hostIp, err := dns.ResolveAddr(host, ns)
 	if err != nil {
 		log.Fatalf("failed to resolve host: %v", err)
 	}
@@ -39,6 +40,7 @@ func NewTest(bind string, host string, timeout int, interval int, warn int) *Tes
 		Timeout:  time.Duration(timeout) * time.Millisecond,
 		Interval: time.Duration(interval) * time.Millisecond,
 		Warn:     time.Duration(warn) * time.Millisecond,
+		Ns:       ns,
 	}
 }
 
@@ -51,23 +53,26 @@ func (t *Test) Execute(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			seq = seq + 1
-			cf := new(log.TextFormatter)
-			cf.FullTimestamp = true
-			log.SetFormatter(cf)
-			lg := log.Fields{
-				"seq":  seq,
-				"dest": fmt.Sprintf("%v (%v)", t.Host, t.Ip.IP),
-			}
-			pCtx, _ := context.WithTimeout(ctx, t.Timeout)
-			rtt, err := t.Api.PingContext(pCtx, &t.Ip)
-			if err != nil {
-				log.WithFields(lg).Errorf("icmp error: %v", err)
-			} else if rtt > t.Warn {
-				log.WithFields(lg).Warnf("rtt warn threshold %v exceed", t.Warn)
-			} else {
-				log.WithFields(lg).Infof("icmp rtt %v", rtt)
-			}
+			func() {
+				seq = seq + 1
+				cf := new(log.TextFormatter)
+				cf.FullTimestamp = true
+				log.SetFormatter(cf)
+				lg := log.Fields{
+					"seq":  seq,
+					"dest": fmt.Sprintf("%v (%v)", t.Host, t.Ip.IP),
+				}
+				pCtx, cancel := context.WithTimeout(ctx, t.Timeout)
+				defer cancel()
+				rtt, err := t.Api.PingContext(pCtx, &t.Ip)
+				if err != nil {
+					log.WithFields(lg).Errorf("icmp error: %v", err)
+				} else if rtt > t.Warn {
+					log.WithFields(lg).Warnf("rtt warn threshold %v exceed", t.Warn)
+				} else {
+					log.WithFields(lg).Infof("icmp rtt %v", rtt.Round(time.Millisecond))
+				}
+			}()
 		}
 	}
 }

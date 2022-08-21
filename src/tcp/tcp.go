@@ -17,14 +17,15 @@ type Test struct {
 	Port     int
 	Timeout  time.Duration
 	Interval time.Duration
+	Ns       string
 }
 
-func NewTest(bind string, host string, port int, timeout int, interval int) *Test {
-	bindIp, err := dns.ResolveAddr(bind)
+func NewTest(bind string, host string, port int, timeout int, interval int, ns string) *Test {
+	bindIp, err := dns.ResolveAddr(bind, "")
 	if err != nil {
 		log.Fatalf("failed to resolve bind: %v", err)
 	}
-	hostIp, err := dns.ResolveAddr(host)
+	hostIp, err := dns.ResolveAddr(host, ns)
 	if err != nil {
 		log.Fatalf("failed to resolve host: %v", err)
 	}
@@ -38,6 +39,7 @@ func NewTest(bind string, host string, port int, timeout int, interval int) *Tes
 		Port:     port,
 		Timeout:  time.Duration(timeout) * time.Millisecond,
 		Interval: time.Duration(interval) * time.Millisecond,
+		Ns:       ns,
 	}
 }
 

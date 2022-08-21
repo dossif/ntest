@@ -115,8 +115,8 @@ func NewArgs(appName string, appVersion string) Arguments {
 	}
 	domainFlagOpt := &argparse.Options{
 		Required: false,
-		Help:     "tls-sni & header-host domain",
-		Validate: func(args []string) error { return validateArg(args[0], "string", "hostname|ip4_addr|ip6_addr") },
+		Help:     "domain",
+		Validate: func(args []string) error { return validateArg(args[0], "string", "hostname") },
 	}
 	bodyFlagOpt := &argparse.Options{
 		Required: false,

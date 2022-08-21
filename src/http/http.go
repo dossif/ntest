@@ -24,8 +24,8 @@ type Test struct {
 	Body     string
 }
 
-func NewTest(bind string, host string, timeout int, interval int, method string, domain string, body string) *Test {
-	bindIp, err := dns.ResolveAddr(bind)
+func NewTest(bind string, host string, timeout int, interval int, method string, domain string, body string, ns string) *Test {
+	bindIp, err := dns.ResolveAddr(bind, "")
 	if err != nil {
 		log.Fatalf("failed to resolve bind: %v", err)
 	}
@@ -33,7 +33,7 @@ func NewTest(bind string, host string, timeout int, interval int, method string,
 	if err != nil {
 		log.Fatalf("failed to parse host: %v", err)
 	}
-	hostIp, err := dns.ResolveAddr(hostUrl.Host)
+	hostIp, err := dns.ResolveAddr(hostUrl.Host, ns)
 	if err != nil {
 		log.Fatalf("failed to resolve host: %v", err)
 	}
@@ -73,14 +73,14 @@ func (t *Test) Execute(ctx context.Context) error {
 			cf := new(log.TextFormatter)
 			cf.FullTimestamp = true
 			log.SetFormatter(cf)
-
+			
 			lg := log.Fields{
 				"seq":    seq,
 				"dest":   fmt.Sprintf("%v (%v)", t.Url, t.Ip.IP),
 				"method": t.Method,
 			}
 			seq = seq + 1
-
+			
 			req, err := http.NewRequest(t.Method, t.Url.String(), bytes.NewReader([]byte(t.Body)))
 			if err != nil {
 				log.Errorf("failed to create http request: %v", err)
