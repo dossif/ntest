@@ -49,7 +49,15 @@ func resolveOsDomainToIp(domain string, ipv string) (ip *net.IPAddr, err error) 
 func resolveDnsDomainToIp(domain string, ipv string, ns string) (ip *net.IPAddr, err error) {
 	cl := godns.Client{}
 	req := godns.Msg{}
-	req.SetQuestion("google.com.", godns.TypeA)
+	var typeX uint16
+	if ipv == "ip4" {
+		typeX = godns.TypeA
+	} else if ipv == "ip6" {
+		typeX = godns.TypeAAAA
+	} else {
+		return ip, fmt.Errorf("unknown ip version: %v", err)
+	}
+	req.SetQuestion(fmt.Sprintf("%v.", domain), typeX)
 	req.SetEdns0(4096, true)
 	r, _, err := cl.Exchange(&req, fmt.Sprintf("%s:53", ns))
 	if err != nil {
