@@ -27,7 +27,7 @@ func ResolveAddr(addr string, ns string) (ip *net.IPAddr, err error) {
 			}
 			return ip, err
 		default:
-			ip, err := resolveDnsDomainToIp(addr, "ip4")
+			ip, err := resolveDnsDomainToIp(addr, "ip4", ns)
 			if err != nil {
 				return ip, fmt.Errorf("failed to resolve domain: %v", err)
 			}
@@ -46,19 +46,23 @@ func resolveOsDomainToIp(domain string, ipv string) (ip *net.IPAddr, err error) 
 	return ip, err
 }
 
-func resolveDnsDomainToIp(domain string, ipv string) (ip *net.IPAddr, err error) {
+func resolveDnsDomainToIp(domain string, ipv string, ns string) (ip *net.IPAddr, err error) {
 	cl := godns.Client{}
 	req := godns.Msg{}
 	req.SetQuestion("google.com.", godns.TypeA)
 	req.SetEdns0(4096, true)
-	answer, _, err := cl.Exchange(&req, "8.8.8.8:53")
+	r, _, err := cl.Exchange(&req, fmt.Sprintf("%s:53", ns))
 	if err != nil {
 		return ip, fmt.Errorf("failed to resolve with dns-resolver: %v", err)
 	}
-	fmt.Printf(answer.Extra[0].String())
 	addr := net.IPAddr{
-		IP:   net.ParseIP("1.1.1.1"),
+		IP:   nil,
 		Zone: "",
+	}
+	for _, a := range r.Answer {
+		if a, ok := a.(*godns.A); ok {
+			addr.IP = net.ParseIP(a.A.String())
+		}
 	}
 	return &addr, err
 }
