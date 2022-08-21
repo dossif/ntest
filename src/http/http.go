@@ -73,7 +73,6 @@ func (t *Test) Execute(ctx context.Context) error {
 			cf := new(log.TextFormatter)
 			cf.FullTimestamp = true
 			log.SetFormatter(cf)
-			
 			lg := log.Fields{
 				"seq":    seq,
 				"dest":   fmt.Sprintf("%v (%v)", t.Url, t.Ip.IP),
