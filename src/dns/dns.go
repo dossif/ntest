@@ -4,7 +4,10 @@ import (
 	"fmt"
 	godns "github.com/miekg/dns"
 	"net"
+	"strconv"
 )
+
+const dnsPort = 53
 
 func isIp(ip string) bool {
 	b := net.ParseIP(ip)
@@ -23,13 +26,13 @@ func ResolveAddr(addr string, ns string) (ip *net.IPAddr, err error) {
 		case "":
 			ip, err := resolveOsDomainToIp(addr, "ip4")
 			if err != nil {
-				return ip, fmt.Errorf("failed to resolve domain: %v", err)
+				return ip, fmt.Errorf("failed to resolve %v with os-resoler: %v", addr, err)
 			}
 			return ip, err
 		default:
 			ip, err := resolveDnsDomainToIp(addr, "ip4", ns)
 			if err != nil {
-				return ip, fmt.Errorf("failed to resolve domain: %v", err)
+				return ip, fmt.Errorf("failed to resolve %v with dns-resolver: %v", addr, err)
 			}
 			return ip, err
 		}
@@ -41,7 +44,7 @@ func ResolveAddr(addr string, ns string) (ip *net.IPAddr, err error) {
 func resolveOsDomainToIp(domain string, ipv string) (ip *net.IPAddr, err error) {
 	ip, err = net.ResolveIPAddr(ipv, domain)
 	if err != nil {
-		return ip, fmt.Errorf("failed to resolve with os-resolver: %v", err)
+		return ip, fmt.Errorf("os error: %v", err)
 	}
 	return ip, err
 }
@@ -59,18 +62,17 @@ func resolveDnsDomainToIp(domain string, ipv string, ns string) (ip *net.IPAddr,
 	}
 	req.SetQuestion(fmt.Sprintf("%v.", domain), typeX)
 	req.SetEdns0(4096, true)
-	r, _, err := cl.Exchange(&req, fmt.Sprintf("%s:53", ns))
+	r, _, err := cl.Exchange(&req, net.JoinHostPort(ns, strconv.Itoa(dnsPort)))
 	if err != nil {
-		return ip, fmt.Errorf("failed to resolve with dns-resolver: %v", err)
+		return ip, fmt.Errorf("failed to resolve: %v", err)
 	}
-	addr := net.IPAddr{
-		IP:   nil,
-		Zone: "",
+	if r.Rcode != godns.RcodeSuccess {
+		return ip, fmt.Errorf("bad record status: %v", r.Rcode)
 	}
 	for _, a := range r.Answer {
 		if a, ok := a.(*godns.A); ok {
-			addr.IP = net.ParseIP(a.A.String())
+			ip.IP = net.ParseIP(a.A.String())
 		}
 	}
-	return &addr, err
+	return ip, err
 }

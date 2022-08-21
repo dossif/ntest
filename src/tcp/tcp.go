@@ -46,6 +46,11 @@ func NewTest(bind string, host string, port int, timeout int, interval int, ns s
 
 func (t *Test) Execute(ctx context.Context) error {
 	ticker := time.NewTicker(t.Interval)
+	cf := new(log.TextFormatter)
+	cf.FullTimestamp = true
+	log.SetFormatter(cf)
+	addr := net.JoinHostPort(t.Ip.String(), strconv.Itoa(t.Port))
+	rCtx, _ := context.WithTimeout(ctx, t.Timeout)
 	defer ticker.Stop()
 	var seq int
 	for {
@@ -54,12 +59,7 @@ func (t *Test) Execute(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			seq = seq + 1
-			addr := net.JoinHostPort(t.Ip.String(), strconv.Itoa(t.Port))
-			rCtx, _ := context.WithTimeout(ctx, t.Timeout)
 			conn, err := t.Api.DialContext(rCtx, "tcp", addr)
-			cf := new(log.TextFormatter)
-			cf.FullTimestamp = true
-			log.SetFormatter(cf)
 			lg := log.Fields{
 				"seq":  seq,
 				"dest": fmt.Sprintf("%v (%v)", t.Host, t.Ip.IP),

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"ntest/src/args"
 	"ntest/src/http"
 	"ntest/src/icmp"
@@ -43,7 +44,7 @@ func main() {
 	t := NewTest(arg)
 	err := t.Execute(ctx)
 	if err != nil {
-		panic(fmt.Sprintf("failed to init test: %v", err))
+		log.Fatalf(fmt.Sprintf("failed to init test: %v", err))
 	}
 	//defer fmt.Println("exit main")
 }
