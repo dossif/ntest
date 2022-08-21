@@ -79,7 +79,6 @@ func (t *Test) Execute(ctx context.Context) error {
 				"method": t.Method,
 			}
 			seq = seq + 1
-			
 			req, err := http.NewRequest(t.Method, t.Url.String(), bytes.NewReader([]byte(t.Body)))
 			if err != nil {
 				log.Errorf("failed to create http request: %v", err)

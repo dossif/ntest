@@ -7,6 +7,7 @@ import (
 	"net"
 	"ntest/src/dns"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -54,7 +55,8 @@ func (t *Test) Execute(ctx context.Context) error {
 		case <-ticker.C:
 			seq = seq + 1
 			addr := net.JoinHostPort(t.Ip.String(), strconv.Itoa(t.Port))
-			conn, err := t.Api.DialContext(ctx, "tcp", addr)
+			rCtx, _ := context.WithTimeout(ctx, t.Timeout)
+			conn, err := t.Api.DialContext(rCtx, "tcp", addr)
 			cf := new(log.TextFormatter)
 			cf.FullTimestamp = true
 			log.SetFormatter(cf)
@@ -64,7 +66,9 @@ func (t *Test) Execute(ctx context.Context) error {
 				"port": t.Port,
 			}
 			if err != nil {
-				log.WithFields(lg).Errorf("tcp error: %v", err)
+				if !strings.Contains(err.Error(), "operation was canceled") {
+					log.WithFields(lg).Errorf("tcp error: %v", err)
+				}
 			} else {
 				log.WithFields(lg).Infof("tcp ok")
 				defer func() { _ = conn.Close() }()
