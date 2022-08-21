@@ -71,9 +71,8 @@ func resolveDnsDomainToIp(domain string, ipv string, ns string) (ip *net.IPAddr,
 	}
 	for _, a := range r.Answer {
 		if a, ok := a.(*godns.A); ok {
-			fmt.Print("--", a.A.String())
+			ip = &net.IPAddr{IP: a.A}
 		}
 	}
-	ip.IP = net.ParseIP("1.2.3.4")
 	return ip, err
 }
