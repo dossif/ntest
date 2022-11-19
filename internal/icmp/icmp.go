@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/digineo/go-ping"
+	"github.com/dossif/ntest/internal/dns"
 	log "github.com/sirupsen/logrus"
 	"net"
-	"ntest/src/dns"
 	"time"
 )
 

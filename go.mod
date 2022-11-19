@@ -1,4 +1,4 @@
-module ntest
+module github.com/dossif/ntest
 
 go 1.17
 

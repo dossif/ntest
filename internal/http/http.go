@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/dossif/ntest/internal/dns"
 	log "github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"net/url"
-	"ntest/src/dns"
 	"strings"
 	"time"
 )

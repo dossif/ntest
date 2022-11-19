@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"github.com/dossif/ntest/internal/args"
+	"github.com/dossif/ntest/internal/http"
+	"github.com/dossif/ntest/internal/icmp"
+	"github.com/dossif/ntest/internal/signal"
+	"github.com/dossif/ntest/internal/tcp"
 	log "github.com/sirupsen/logrus"
-	"ntest/src/args"
-	"ntest/src/http"
-	"ntest/src/icmp"
-	"ntest/src/signal"
-	"ntest/src/tcp"
 )
 
 const (
@@ -44,7 +43,7 @@ func main() {
 	t := NewTest(arg)
 	err := t.Execute(ctx)
 	if err != nil {
-		log.Fatalf(fmt.Sprintf("failed to init test: %v", err))
+		log.Fatalf("failed to init test: %v", err)
 	}
 	//defer fmt.Println("exit main")
 }

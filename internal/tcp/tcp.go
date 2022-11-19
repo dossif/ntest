@@ -3,9 +3,9 @@ package tcp
 import (
 	"context"
 	"fmt"
+	"github.com/dossif/ntest/internal/dns"
 	log "github.com/sirupsen/logrus"
 	"net"
-	"ntest/src/dns"
 	"strconv"
 	"strings"
 	"time"
