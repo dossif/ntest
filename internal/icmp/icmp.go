@@ -49,6 +49,7 @@ func (t *Test) Execute(ctx context.Context) error {
 	pCtx, cancel := context.WithTimeout(ctx, t.Timeout)
 	cf := new(log.TextFormatter)
 	cf.FullTimestamp = true
+	cf.TimestampFormat = "15:04:05"
 	log.SetFormatter(cf)
 	defer cancel()
 	defer ticker.Stop()
