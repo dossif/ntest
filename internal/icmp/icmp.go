@@ -46,12 +46,10 @@ func NewTest(bind string, host string, timeout int, interval int, warn int, ns s
 
 func (t *Test) Execute(ctx context.Context) error {
 	ticker := time.NewTicker(t.Interval)
-	pCtx, cancel := context.WithTimeout(ctx, t.Timeout)
 	cf := new(log.TextFormatter)
 	cf.FullTimestamp = true
 	cf.TimestampFormat = "15:04:05"
 	log.SetFormatter(cf)
-	defer cancel()
 	defer ticker.Stop()
 	var seq int
 	for {
@@ -65,7 +63,7 @@ func (t *Test) Execute(ctx context.Context) error {
 					"seq":  seq,
 					"dest": fmt.Sprintf("%v (%v)", t.Host, t.Ip.IP),
 				}
-				rtt, err := t.Api.PingContext(pCtx, &t.Ip)
+				rtt, err := t.Api.Ping(&t.Ip, t.Timeout)
 				if err != nil {
 					log.WithFields(lg).Errorf("icmp error: %v", err)
 				} else if rtt > t.Warn {
