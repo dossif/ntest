@@ -67,7 +67,7 @@ func (t *Test) Execute(ctx context.Context) error {
 				if err != nil {
 					log.WithFields(lg).Errorf("icmp error: %v", err)
 				} else if rtt > t.Warn {
-					log.WithFields(lg).Warnf("rtt warn threshold %v exceed", t.Warn)
+					log.WithFields(lg).Warnf("icmp rtt %v: warn threshold %v exceed", rtt.Round(time.Millisecond), t.Warn)
 				} else {
 					log.WithFields(lg).Infof("icmp rtt %v", rtt.Round(time.Millisecond))
 				}
