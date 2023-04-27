@@ -59,9 +59,15 @@ func (t *Test) Execute(ctx context.Context) error {
 		case <-ticker.C:
 			func() {
 				seq = seq + 1
+				var dest string
+				if t.Host == t.Ip.IP.String() {
+					dest = t.Ip.IP.String()
+				} else {
+					dest = fmt.Sprintf("%v[%v]", t.Host, t.Ip.IP.String())
+				}
 				lg := log.Fields{
 					"seq":  seq,
-					"dest": fmt.Sprintf("%v (%v)", t.Host, t.Ip.IP),
+					"dest": dest,
 				}
 				rtt, err := t.Api.Ping(&t.Ip, t.Timeout)
 				if err != nil {
