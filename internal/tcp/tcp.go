@@ -68,11 +68,11 @@ func (t *Test) Execute(ctx context.Context) error {
 			if err != nil {
 				if !strings.Contains(err.Error(), "operation was canceled") {
 					log.WithFields(lg).Errorf("tcp error: %v", err)
+					continue
 				}
-			} else {
-				log.WithFields(lg).Infof("tcp ok")
-				defer func() { _ = conn.Close() }()
 			}
+			log.WithFields(lg).Infof("tcp ok")
+			defer func() { _ = conn.Close() }()
 		}
 	}
 }
