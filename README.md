@@ -16,7 +16,7 @@ Version comes from the nearest git tag (this repo tags releases as `v1.0.0`,
 
 ```bash
 VERSION=$(git describe --tags --always --dirty)
-go build -trimpath -ldflags "-X github.com/dossif/ntest/cmd.appVersion=$VERSION" -o ntest .
+go build -trimpath -ldflags "-X main.appVersion=$VERSION" -o ntest ./cmd/ntest
 ```
 
 `--dirty` appends a `-dirty` suffix if the tree has uncommitted changes;
@@ -161,12 +161,11 @@ guarantees a DNS change takes effect on the very next tick instead of
 ## Project structure
 
 ```
-main.go                     # entry point — calls cmd.Execute()
-cmd/root.go                 # Cobra root command, Execute(), appVersion
-cmd/cmd_ping.go              # ping subcommand (ICMP)
-cmd/cmd_tcp.go               # tcp subcommand
-cmd/cmd_http.go              # http subcommand
-cmd/cmd_ws.go                # ws subcommand
+cmd/ntest/root.go            # package main: entry point (func main), Cobra root command, appVersion
+cmd/ntest/cmd_ping.go        # ping subcommand (ICMP)
+cmd/ntest/cmd_tcp.go         # tcp subcommand
+cmd/ntest/cmd_http.go        # http subcommand
+cmd/ntest/cmd_ws.go          # ws subcommand
 internal/icmp/icmp.go        # ICMP ping test implementation (used by the "ping" subcommand)
 internal/tcp/tcp.go          # TCP connection test implementation
 internal/http/http.go        # HTTP request test implementation
@@ -178,7 +177,7 @@ internal/signal/signal.go    # SIGINT/SIGTERM → context cancellation
 
 ## Architecture
 
-- **Cobra** — CLI framework; each subcommand lives in its own `cmd_*.go` file, registered via `init()`.
+- **Cobra** — CLI framework; `cmd/ntest/` is `package main` (the build target is `./cmd/ntest`, not repo root), with `func main()` in `root.go` and each subcommand in its own `cmd_*.go` file, registered via `init()`.
 - **`Test` interface** — a single `Execute(ctx context.Context) error` method, implemented by the `icmp` (backs the `ping` subcommand), `tcp`, `http` and `ws` packages.
 - Each test runs a `time.Ticker` loop and exits cleanly when `ctx.Done()` fires.
 - Each tick is independent and self-contained: DNS resolution happens fresh on every tick, not once at startup, so one tick's outcome (including a resolution failure) never affects the next.
