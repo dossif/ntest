@@ -1,0 +1,55 @@
+name: Release
+
+# Builds a macOS arm64 binary and publishes it as a GitHub Release asset
+# whenever a version tag (v1.0.0, v1.1.0, ...) is pushed.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-arm64:
+    # Cross-compiled from Linux: the project has no cgo (verified — a
+    # plain "GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build" produces a
+    # correct arm64 Mach-O binary without needing to run on macOS at all),
+    # so ubuntu-latest is faster and cheaper than a macOS runner.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history + tags, not just the tagged commit: `git describe`
+          # needs the tag objects and commit graph to resolve the version.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Determine version
+        run: echo "VERSION=$(git describe --tags --always --dirty)" >> "$GITHUB_ENV"
+
+      - name: Build
+        env:
+          GOOS: darwin
+          GOARCH: arm64
+          CGO_ENABLED: 0
+        run: |
+          go build -trimpath \
+            -ldflags "-X github.com/dossif/ntest/cmd.appVersion=${VERSION}" \
+            -o ntest-darwin-arm64 .
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            gh release upload "$VERSION" ntest-darwin-arm64 --clobber
+          else
+            gh release create "$VERSION" ntest-darwin-arm64 \
+              --title "$VERSION" --generate-notes
+          fi

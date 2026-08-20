@@ -13,7 +13,8 @@ import (
 //
 //	-ldflags "-X github.com/dossif/ntest/cmd.appVersion=<version>"
 //
-// see build.sh. Keep the package path in sync if this file ever moves.
+// see the Makefile, which derives it from `git describe --tags`. Keep the
+// package path in sync if this file ever moves.
 var appVersion = "0.0.0"
 
 var rootCmd = &cobra.Command{

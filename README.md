@@ -6,9 +6,21 @@ every attempt until you stop it (Ctrl+C).
 
 ## Build & install
 
+Pre-built macOS arm64 binaries are published on [GitHub Releases](../../releases)
+for every tagged version — download `ntest-darwin-arm64` and skip straight
+to the SUID step below. Other platforms/architectures aren't built yet, so
+build from source for those.
+
+Version comes from the nearest git tag (this repo tags releases as `v1.0.0`,
+`v1.1.0`, ...), so build from a checkout that has the tags available:
+
 ```bash
-go build -trimpath -ldflags "-X github.com/dossif/ntest/cmd.appVersion=<version>" -o ntest .
+VERSION=$(git describe --tags --always --dirty)
+go build -trimpath -ldflags "-X github.com/dossif/ntest/cmd.appVersion=$VERSION" -o ntest .
 ```
+
+`--dirty` appends a `-dirty` suffix if the tree has uncommitted changes;
+`--always` falls back to the short commit hash if no tag is reachable yet.
 
 The `ping` subcommand needs raw socket access, so an installed binary needs
 the SUID bit:
@@ -18,8 +30,6 @@ sudo cp ./ntest /usr/local/bin/
 sudo chown root:staff /usr/local/bin/ntest
 sudo chmod u+s /usr/local/bin/ntest
 ```
-
-Current version: **1.0.0**
 
 ## Usage
 
@@ -147,6 +157,7 @@ internal/http/http.go        # HTTP request test implementation
 internal/ws/ws.go            # WebSocket handshake+ping test implementation
 internal/dns/dns.go          # DNS resolution (OS resolver or custom nameserver)
 internal/signal/signal.go    # SIGINT/SIGTERM → context cancellation
+.github/workflows/release.yml # builds+publishes the macOS arm64 binary on a v* tag push
 ```
 
 ## Architecture
