@@ -9,6 +9,7 @@ package ws
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,7 +30,7 @@ type Test struct {
 	Ns       string        // DNS server used to resolve Host, "" for the OS resolver
 	Timeout  time.Duration // deadline covering the handshake and the ping/pong
 	Interval time.Duration // delay between attempts
-	Domain   string        // if set, overrides the Host header sent in the handshake
+	Domain   string        // if set, overrides the Host header, TLS SNI and certificate hostname verification
 
 	// httpClient performs the handshake; its Transport dials resolvedAddr
 	// (see NewTest) rather than letting net/http re-resolve the hostname.
@@ -95,8 +96,6 @@ func NewTest(bind string, host string, timeout time.Duration, interval time.Dura
 		// tick's fresh resolution — same trick as internal/http, and for
 		// the same reason: without it, --dns would only affect the "dest"
 		// log field, not the actual connection.
-		// TLS (SNI, certificate hostname) is unaffected — net/http derives
-		// that from the request URL/Host, not from the dialed address.
 		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
 			return dialer.DialContext(ctx, network, test.resolvedAddr)
 		},
@@ -105,6 +104,15 @@ func NewTest(bind string, host string, timeout time.Duration, interval time.Dura
 		// each tick opens and closes its own WebSocket connection, there is
 		// nothing to keep alive between ticks.
 		DisableKeepAlives: true,
+	}
+	if domain != "" {
+		// Without this, TLS would still use the dialed IP / the request
+		// URL's host for SNI and certificate verification, so
+		// "--host wss://<ip> --domain example.com" would send no (or the
+		// wrong) SNI and fail cert verification against example.com's
+		// certificate — same fix as internal/http, see that package's
+		// NewTest for the full reasoning.
+		transport.TLSClientConfig = &tls.Config{ServerName: domain}
 	}
 	test.httpClient = &http.Client{Transport: transport}
 	return test, nil
@@ -149,6 +157,11 @@ func (t *Test) Execute(ctx context.Context) error {
 			// round trip — same per-tick pattern as internal/tcp and
 			// internal/http.
 			rCtx, cancel := context.WithTimeout(ctx, t.Timeout)
+			// opts.Host overrides the Host header sent in the handshake.
+			// TLS SNI and certificate hostname verification are handled
+			// separately, via Transport.TLSClientConfig.ServerName (set in
+			// NewTest) — both need to change together for --domain to make
+			// hitting an IP directly behave like hitting the domain.
 			opts := &websocket.DialOptions{HTTPClient: t.httpClient}
 			if t.Domain != "" {
 				opts.Host = t.Domain
@@ -185,7 +198,7 @@ func (t *Test) Execute(ctx context.Context) error {
 				}
 				continue
 			}
-			log.WithFields(lg).Infof("websocket ok: %v", resp.Status)
+			log.WithFields(lg).Infof("websocket ok: handshake %v, ping ok", resp.Status)
 		}
 	}
 }

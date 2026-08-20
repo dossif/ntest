@@ -92,8 +92,17 @@ screen-clear codes, not a normal log; use it without `--graph` for that.
 | Flag | Default | Description |
 |---|---|---|
 | `--method` | `GET` | HTTP method (must be uppercase) |
-| `--domain` | — | Overrides the `Host` request header (SNI/certificate hostname are unaffected) |
+| `--domain` | — | Overrides the `Host` request header, TLS SNI and certificate hostname verification |
 | `--body` | — | Request body |
+
+`--domain` makes hitting an IP directly behave the same as hitting the
+domain name: `ntest http https://<google.com's IP> --domain google.com` and
+`ntest http https://google.com` send the same SNI and verify the response
+certificate against the same name, so both succeed or fail together. Without
+`--domain`, hitting an IP directly over HTTPS usually fails the TLS
+handshake (no/wrong SNI — most HTTPS hosts today are name-based virtual
+hosts) or fails certificate verification (the cert doesn't cover the bare
+IP).
 
 ### `ws`-specific
 
@@ -102,7 +111,14 @@ screen-clear codes, not a normal log; use it without `--graph` for that.
 
 | Flag | Default | Description |
 |---|---|---|
-| `--domain` | — | Overrides the `Host` header sent in the handshake |
+| `--domain` | — | Overrides the `Host` header, TLS SNI and certificate hostname verification for the handshake |
+
+Same as `http`'s `--domain` (see above): `ntest ws wss://<IP> --domain
+example.com` sends the same SNI and checks the response certificate against
+the same name as `ntest ws wss://example.com` would, so hitting the IP
+directly behaves the same as hitting the domain. Without `--domain`, a raw
+IP literal in `--host` gets no SNI at all (TLS doesn't send SNI for IP
+literals), which most `wss://` hosts reject outright.
 
 A successful attempt does a full `Upgrade: websocket` HTTP handshake, then
 sends a WebSocket ping frame and waits for the pong, then closes the

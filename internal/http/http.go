@@ -6,6 +6,7 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -25,7 +26,7 @@ type Test struct {
 	Ns       string        // DNS server used to resolve Host, "" for the OS resolver
 	Timeout  time.Duration // per-request deadline
 	Interval time.Duration // delay between requests
-	Domain   string        // if set, overrides the Host header
+	Domain   string        // if set, overrides the Host header, TLS SNI and certificate hostname verification
 	Method   string        // HTTP method
 	Body     string        // request body
 
@@ -93,8 +94,6 @@ func NewTest(bind string, host string, timeout time.Duration, interval time.Dura
 		// affect the "dest" log field: the actual TCP connection would
 		// still go through Go's default resolver and completely ignore the
 		// configured DNS server.
-		// TLS (SNI, certificate hostname) is unaffected — net/http derives
-		// that from the request URL/Host, not from the dialed address.
 		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
 			return dialer.DialContext(ctx, network, test.resolvedAddr)
 		},
@@ -107,6 +106,18 @@ func NewTest(bind string, host string, timeout time.Duration, interval time.Dura
 		// keep-alives forces a new dial, and therefore a new DialContext
 		// call reading the just-resolved resolvedAddr, on every request.
 		DisableKeepAlives: true,
+	}
+	if domain != "" {
+		// Without this, TLS would still use the dialed IP's reverse
+		// mapping / the request URL's host for SNI and certificate
+		// verification, so "--host https://<ip> --domain example.com"
+		// would send no SNI (or the wrong one) and fail cert verification
+		// against example.com's certificate — defeating the whole point of
+		// --domain, which is to make hitting an IP directly behave like
+		// hitting the domain (same vhost selection via SNI, same cert
+		// checked against the same name), matching what --host
+		// https://example.com would do.
+		transport.TLSClientConfig = &tls.Config{ServerName: domain}
 	}
 	// No client-level Timeout here: the per-request deadline is enforced by
 	// the context.WithTimeout(ctx, t.Timeout) applied to each request in
@@ -158,8 +169,11 @@ func (t *Test) Execute(ctx context.Context) error {
 				log.WithFields(lg).Errorf("failed to create http request: %v", err)
 				continue
 			}
-			// Override the Host header (SNI/cert hostname are unaffected,
-			// they come from the request URL, not from this header).
+			// Override the Host header. TLS SNI and certificate hostname
+			// verification are handled separately, via
+			// Transport.TLSClientConfig.ServerName (set in NewTest) — both
+			// need to change together for --domain to make hitting an IP
+			// directly behave like hitting the domain name.
 			if t.Domain != "" {
 				req.Host = t.Domain
 			}
