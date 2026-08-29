@@ -38,7 +38,9 @@ type Test struct {
 // the test from starting — it just logs a resolution error each tick until
 // the host resolves.
 func NewTest(bind string, host string, timeout time.Duration, interval time.Duration, warn time.Duration, ns string, graph bool) (*Test, error) {
-	bindIp, err := dns.ResolveAddr(bind, "")
+	bindCtx, bindCancel := context.WithTimeout(context.Background(), timeout)
+	bindIp, err := dns.ResolveAddr(bindCtx, bind, "")
+	bindCancel()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve bind: %w", err)
 	}
@@ -86,10 +88,18 @@ func (t *Test) Execute(ctx context.Context) error {
 			// Resolved before every ping (not once at startup): the target
 			// may still be propagating in DNS, or its address may change
 			// between ticks, so a stale or failed resolution shouldn't be
-			// cached across attempts.
-			ip, err := dns.ResolveAddr(t.Host, t.Ns)
+			// cached across attempts. Bounded by t.Timeout via rCtx — the OS
+			// resolver has no timeout of its own and can otherwise hang the
+			// whole loop (see internal/dns's ResolveAddr doc comment).
+			rCtx, cancel := context.WithTimeout(ctx, t.Timeout)
+			ip, err := dns.ResolveAddr(rCtx, t.Host, t.Ns)
+			cancel()
 			if err != nil {
-				log.WithFields(lg).Errorf("failed to resolve host: %v", err)
+				// Suppress the error log on shutdown (ctx cancelled mid-
+				// resolution) — that's expected, not a test failure.
+				if ctx.Err() == nil {
+					log.WithFields(lg).Errorf("failed to resolve host: %v", err)
+				}
 				continue
 			}
 			// Show "host[ip]" only when the host was a name that got
@@ -128,7 +138,9 @@ func (t *Test) executeGraph(ctx context.Context) error {
 			return nil
 		case <-ticker.C:
 			attempts++
-			ip, err := dns.ResolveAddr(t.Host, t.Ns)
+			rCtx, cancel := context.WithTimeout(ctx, t.Timeout)
+			ip, err := dns.ResolveAddr(rCtx, t.Host, t.Ns)
+			cancel()
 			if err != nil {
 				fails++
 				lastErr = fmt.Sprintf("failed to resolve host: %v", err)

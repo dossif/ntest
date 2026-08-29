@@ -50,7 +50,9 @@ type Test struct {
 // the test from starting — it just logs a resolution error each tick until
 // the host resolves.
 func NewTest(bind string, host string, timeout time.Duration, interval time.Duration, domain string, ns string) (*Test, error) {
-	bindIp, err := dns.ResolveAddr(bind, "")
+	bindCtx, bindCancel := context.WithTimeout(context.Background(), timeout)
+	bindIp, err := dns.ResolveAddr(bindCtx, bind, "")
+	bindCancel()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve bind: %w", err)
 	}
@@ -141,22 +143,29 @@ func (t *Test) Execute(ctx context.Context) error {
 				"seq":  seq,
 				"dest": t.Url.String(),
 			}
+			// One deadline covers resolution, the handshake and the
+			// ping/pong round trip — same per-tick pattern as internal/tcp
+			// and internal/http. Resolution isn't free-running: the OS
+			// resolver has no timeout of its own and can otherwise hang
+			// the whole loop (see internal/dns's ResolveAddr doc comment).
+			rCtx, cancel := context.WithTimeout(ctx, t.Timeout)
 			// Resolved before every attempt (not once at startup): the
 			// target may still be propagating in DNS, or its address may
 			// change between ticks, so a stale or failed resolution
 			// shouldn't be cached across attempts.
-			ip, err := dns.ResolveAddr(t.Host, t.Ns)
+			ip, err := dns.ResolveAddr(rCtx, t.Host, t.Ns)
 			if err != nil {
-				log.WithFields(lg).Errorf("failed to resolve host: %v", err)
+				cancel()
+				// Suppress the error log on shutdown (ctx cancelled mid-
+				// resolution) — that's expected, not a test failure.
+				if ctx.Err() == nil {
+					log.WithFields(lg).Errorf("failed to resolve host: %v", err)
+				}
 				continue
 			}
 			t.resolvedAddr = net.JoinHostPort(ip.IP.String(), t.Port)
 			lg["dest"] = fmt.Sprintf("%v (%v)", t.Url, ip.IP)
 
-			// One deadline covers both the handshake and the ping/pong
-			// round trip — same per-tick pattern as internal/tcp and
-			// internal/http.
-			rCtx, cancel := context.WithTimeout(ctx, t.Timeout)
 			// opts.Host overrides the Host header sent in the handshake.
 			// TLS SNI and certificate hostname verification are handled
 			// separately, via Transport.TLSClientConfig.ServerName (set in

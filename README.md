@@ -141,8 +141,12 @@ ntest ws wss://example.com/socket --interval 5s
 
 Every tick runs independently: `<host>` is resolved fresh before every
 single attempt (via `--dns` if given, the OS resolver otherwise), not once
-at startup. If resolution fails, that tick logs `failed to resolve host`
-and moves on — it never stops the test. This means you can start `ntest`
+at startup. Resolution is bounded by `--timeout`, same as the actual ping/
+dial/request — a resolver that hangs (broken VPN DNS, a stuck resolver
+daemon, DNS packets silently dropped by a firewall) can't hang the whole
+program indefinitely, and won't leave Ctrl+C appearing to do nothing. If
+resolution fails, that tick logs `failed to resolve host` and moves on — it
+never stops the test. This means you can start `ntest`
 against a domain that doesn't resolve yet (e.g. DNS record not propagated,
 or added to a zone you're about to publish) and just leave it running; it
 will keep logging resolution failures until the host resolves, then pick

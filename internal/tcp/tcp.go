@@ -31,7 +31,9 @@ type Test struct {
 // doesn't stop the test from starting — it just logs a resolution error
 // each tick until the host resolves.
 func NewTest(bind string, host string, port int, timeout time.Duration, interval time.Duration, ns string) (*Test, error) {
-	bindIp, err := dns.ResolveAddr(bind, "")
+	bindCtx, bindCancel := context.WithTimeout(context.Background(), timeout)
+	bindIp, err := dns.ResolveAddr(bindCtx, bind, "")
+	bindCancel()
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve bind: %w", err)
 	}
@@ -71,23 +73,31 @@ func (t *Test) Execute(ctx context.Context) error {
 				"dest": t.Host,
 				"port": t.Port,
 			}
-			// Resolved before every dial (not once at startup): the target
-			// may still be propagating in DNS, or its address may change
-			// between ticks, so a stale or failed resolution shouldn't be
-			// cached across attempts.
-			ip, err := dns.ResolveAddr(t.Host, t.Ns)
-			if err != nil {
-				log.WithFields(lg).Errorf("failed to resolve host: %v", err)
-				continue
-			}
-			lg["dest"] = fmt.Sprintf("%v (%v)", t.Host, ip.IP)
-			addr := net.JoinHostPort(ip.String(), strconv.Itoa(t.Port))
 			// A fresh timeout context is created and cancelled on every
 			// tick (never reused across iterations, never deferred to the
 			// end of Execute), otherwise the first timeout would expire
 			// this context for good and every later dial would fail
-			// immediately.
+			// immediately. One deadline covers both resolution and the
+			// dial below — resolution isn't free-running: the OS resolver
+			// has no timeout of its own and can otherwise hang the whole
+			// loop (see internal/dns's ResolveAddr doc comment).
 			rCtx, cancel := context.WithTimeout(ctx, t.Timeout)
+			// Resolved before every dial (not once at startup): the target
+			// may still be propagating in DNS, or its address may change
+			// between ticks, so a stale or failed resolution shouldn't be
+			// cached across attempts.
+			ip, err := dns.ResolveAddr(rCtx, t.Host, t.Ns)
+			if err != nil {
+				cancel()
+				// Suppress the error log on shutdown (ctx cancelled mid-
+				// resolution) — that's expected, not a test failure.
+				if ctx.Err() == nil {
+					log.WithFields(lg).Errorf("failed to resolve host: %v", err)
+				}
+				continue
+			}
+			lg["dest"] = fmt.Sprintf("%v (%v)", t.Host, ip.IP)
+			addr := net.JoinHostPort(ip.String(), strconv.Itoa(t.Port))
 			conn, err := t.Api.DialContext(rCtx, "tcp", addr)
 			cancel()
 			if err != nil {
