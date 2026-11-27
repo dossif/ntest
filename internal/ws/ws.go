@@ -73,7 +73,7 @@ func NewTest(bind string, host string, timeout time.Duration, interval time.Dura
 	}
 	port := wsUrl.Port()
 	if port == "" {
-		if wsUrl.Scheme == "wss" {
+		if wsUrl.Scheme == "wss" || wsUrl.Scheme == "https" {
 			port = "443"
 		} else {
 			port = "80"
@@ -129,6 +129,15 @@ func (t *Test) Execute(ctx context.Context) error {
 		FullTimestamp:   true,
 		TimestampFormat: "15:04:05",
 	})
+
+	// http(s):// is a common slip for ws(s)://: warn so the user fixes the
+	// URL instead of chasing a confusing handshake failure.
+	switch t.Url.Scheme {
+	case "https":
+		log.Warnf("%s: use wss:// instead of https:// (e.g. ntest ws wss://%s)", t.Url, t.Url.Host+t.Url.RequestURI())
+	case "http":
+		log.Warnf("%s: use ws:// instead of http:// (e.g. ntest ws ws://%s)", t.Url, t.Url.Host+t.Url.RequestURI())
+	}
 
 	ticker := time.NewTicker(t.Interval)
 	defer ticker.Stop()
